@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Focus Bell</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@300;400&display=swap');
+
+  :root {
+    --bg: #0d0d0d;
+    --surface: #141414;
+    --border: #2a2a2a;
+    --gold: #c9a96e;
+    --gold-dim: #7a6040;
+    --text: #e8dcc8;
+    --text-dim: #6b6156;
+    --phase1: #c9a96e;
+    --phase2: #8fb8a8;
+    --phase3: #a08ab8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 50% 0%, #1a1508 0%, transparent 70%),
+                radial-gradient(ellipse 40% 60% at 80% 100%, #080d12 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .container {
+    max-width: 560px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 0.3rem;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .gita-verse {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1.2rem 1.5rem;
+    border-left: 1px solid var(--gold-dim);
+    border-right: 1px solid var(--gold-dim);
+    position: relative;
+  }
+  .gita-verse::before, .gita-verse::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    margin-bottom: 1rem;
+  }
+  .gita-verse::after { margin-bottom: 0; margin-top: 1rem; }
+  .gita-verse p {
+    font-style: italic;
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: 0.6rem;
+  }
+  .gita-verse cite {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+  }
+
+  /* Bell */
+  .bell-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    height: 90px;
+  }
+  .bell-svg { width: 65px; height: 65px; }
+  .bell-svg.ringing { animation: ring 0.6s ease-out; }
+  @keyframes ring {
+    0%   { transform: rotate(0deg); }
+    15%  { transform: rotate(18deg); }
+    30%  { transform: rotate(-18deg); }
+    45%  { transform: rotate(12deg); }
+    60%  { transform: rotate(-8deg); }
+    75%  { transform: rotate(4deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ripple.active { animation: ripple-out 1.2s ease-out forwards; }
+  @keyframes ripple-out {
+    0%   { width: 65px; height: 65px; opacity: 0.7; left: calc(50% - 32px); top: 12px; }
+    100% { width: 190px; height: 190px; opacity: 0; left: calc(50% - 95px); top: -50px; }
+  }
+
+  /* Sound selector */
+  .sound-selector {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .sound-selector-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 0.8rem;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .sound-opt {
+    flex: 1;
+    padding: 0.6rem 0.4rem;
+    text-align: center;
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .sound-opt:hover { background: #1e1e1e; color: var(--text); }
+  .sound-opt.active { background: #1a1810; color: var(--gold); }
+  .sound-opt.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+  }
+  .sound-preview {
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 0.6rem 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  .sound-preview:hover { color: var(--gold); }
+
+  /* Objective */
+  .objective-area { margin-bottom: 1.5rem; }
+  .objective-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .objective-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.65rem 1rem;
+    color: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    resize: none;
+    transition: border-color 0.2s;
+  }
+  .objective-input:focus { outline: none; border-color: var(--gold-dim); }
+  .objective-input::placeholder { color: var(--text-dim); font-style: italic; }
+
+  /* Phase display */
+  .phase-display {
+    display: flex;
+    margin-bottom: 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .phase-block {
+    flex: 1;
+    padding: 0.75rem 0.4rem;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .phase-block:last-child { border-right: none; }
+  .phase-block.active { background: #1a1810; }
+  .phase-block.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .phase-block:nth-child(1).active::after { background: var(--phase1); }
+  .phase-block:nth-child(2).active::after { background: var(--phase2); }
+  .phase-block:nth-child(3).active::after { background: var(--phase3); }
+  .phase-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.25rem;
+  }
+  .phase-name {
+    font-size: 0.82rem;
+    font-weight: 300;
+    color: var(--text);
+    margin-bottom: 0.45rem;
+  }
+  .phase-interval-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+  .phase-interval-control button, .dur-control button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 18px; height: 18px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .phase-interval-control button:hover, .dur-control button:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+  .interval-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    min-width: 36px;
+    text-align: center;
+    color: var(--text);
+  }
+
+  /* Duration row */
+  .phase-duration-row {
+    display: flex;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .dur-block {
+    flex: 1;
+    padding: 0.55rem 0.4rem;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .dur-block:last-child { border-right: none; }
+  .dur-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.35rem;
+  }
+  .dur-control { display: flex; align-items: center; justify-content: center; gap: 0.35rem; }
+  .dur-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    min-width: 30px;
+    text-align: center;
+    color: var(--text);
+  }
+
+  /* Reminder */
+  .reminder-msg {
+    text-align: center;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--gold);
+    min-height: 1.5em;
+    opacity: 0;
+    transition: opacity 0.5s;
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.03em;
+  }
+  .reminder-msg.visible { opacity: 1; }
+
+  /* Timer area */
+  .timer-area {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1.3rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  .current-phase-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .time-display {
+    font-size: 3.2rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+  }
+  .next-bell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    margin-top: 0.9rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    transition: width 0.5s linear;
+    border-radius: 1px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.8rem;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+  }
+  .btn-primary { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+  .btn-primary:hover { background: #dabb80; }
+  .btn-secondary { background: transparent; color: var(--text-dim); border-color: var(--border); }
+  .btn-secondary:hover { color: var(--text); border-color: #444; }
+
+  /* Phase colors */
+  .phase-0 .current-phase-name { color: var(--phase1); }
+  .phase-0 .time-display { color: var(--phase1); }
+  .phase-0 .progress-fill { background: var(--phase1); }
+  .phase-1 .current-phase-name { color: var(--phase2); }
+  .phase-1 .time-display { color: var(--phase2); }
+  .phase-1 .progress-fill { background: var(--phase2); }
+  .phase-2 .current-phase-name { color: var(--phase3); }
+  .phase-2 .time-display { color: var(--phase3); }
+  .phase-2 .progress-fill { background: var(--phase3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Focus Bell</h1>
+  <p class="subtitle">return the attention. return to the task.</p>
+
+  <div class="gita-verse">
+    <p>"Whenever the fickle and restless mind wanders away — for whatever reason — let the yogi withdraw it from those distractions and return it to the sole control of the Self."</p>
+    <cite>Bhagavad Gita · Chapter 6, Verse 26</cite>
+  </div>
+
+  <div class="bell-ring">
+    <div class="ripple" id="ripple"></div>
+    <svg class="bell-svg" id="bell" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 10 C50 10 30 20 28 50 C26 65 20 72 15 78 L85 78 C80 72 74 65 72 50 C70 20 50 10 50 10Z" fill="none" stroke="#c9a96e" stroke-width="2"/>
+      <path d="M35 78 Q50 88 65 78" fill="none" stroke="#c9a96e" stroke-width="2" stroke-linecap="round"/>
+      <line x1="50" y1="10" x2="50" y2="5" stroke="#c9a96e" stroke-width="2"/>
+      <circle cx="50" cy="4" r="3" fill="none" stroke="#c9a96e" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <div class="objective-area">
+    <div class="objective-label">Your intention for this session</div>
+    <textarea class="objective-input" id="objective" rows="2" placeholder="What will you create, complete, or explore?"></textarea>
+  </div>
+
+  <div class="sound-selector">
+    <span class="sound-selector-label">Bell</span>
+    <button class="sound-opt active" id="snd0" onclick="selectSound(0)">Singing Bowl</button>
+    <button class="sound-opt" id="snd1" onclick="selectSound(1)">Temple Bell</button>
+    <button class="sound-preview" onclick="previewBell()">▶ Preview</button>
+  </div>
+
+  <div class="phase-display">
+    <div class="phase-block active" id="pb0">
+      <div class="phase-label">Phase 1</div>
+      <div class="phase-name">Anchoring</div>
+      <div class="phase-interval-control">
+        <button onclick="changeInterval(0,-5)">−</button>
+        <span class="interval-val" id="iv0">20s</span>
+        <button onclick="changeInterval(0,5)">+</button>
+      </div>
+    </div>
+    <div class="phase-block" id="pb1">
+      <div class="phase-label">Phase 2</div>
+      <div class="phase-name">Settling</div>
+      <div class="phase-interval-control">
+        <button onclick="changeInterval(1,-10)">−</button>
+        <span class="interval-val" id="iv1">1m</span>
+        <button onclick="changeInterval(1,10)">+</button>
+      </div>
+    </div>
+    <div class="phase-block" id="pb2">
+      <div class="phase-label">Phase 3</div>
+      <div class="phase-name">Flow</div>
+      <div class="phase-interval-control">
+        <button onclick="changeInterval(2,-30)">−</button>
+        <span class="interval-val" id="iv2">10m</span>
+        <button onclick="changeInterval(2,30)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-duration-row">
+    <div class="dur-block">
+      <div class="dur-label">Phase 1 duration</div>
+      <div class="dur-control">
+        <button onclick="changeDur(0,-60)">−</button>
+        <span class="dur-val" id="dv0">5m</span>
+        <button onclick="changeDur(0,60)">+</button>
+      </div>
+    </div>
+    <div class="dur-block">
+      <div class="dur-label">Phase 2 duration</div>
+      <div class="dur-control">
+        <button onclick="changeDur(1,-60)">−</button>
+        <span class="dur-val" id="dv1">5m</span>
+        <button onclick="changeDur(1,60)">+</button>
+      </div>
+    </div>
+    <div class="dur-block">
+      <div class="dur-label">Phase 3 duration</div>
+      <div class="dur-control">
+        <button onclick="changeDur(2,-300)">−</button>
+        <span class="dur-val" id="dv2">∞</span>
+        <button onclick="changeDur(2,300)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reminder-msg" id="reminder">Return to the task. Let the distraction pass.</div>
+
+  <div class="timer-area phase-0" id="timerArea">
+    <div class="current-phase-name" id="phaseName">PHASE 1 — ANCHORING</div>
+    <div class="time-display" id="timeDisplay">00:00</div>
+    <div class="next-bell" id="nextBell">Bell in 20s</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="startBtn" onclick="toggleStart()">Begin Session</button>
+    <button class="btn btn-secondary" onclick="resetSession()">Reset</button>
+  </div>
+
+</div>
+
+<script>
+const phases = [
+  { name: 'PHASE 1 — ANCHORING', interval: 20,      duration: 5 * 60 },
+  { name: 'PHASE 2 — SETTLING',  interval: 60,      duration: 5 * 60 },
+  { name: 'PHASE 3 — FLOW',      interval: 10 * 60, duration: null   }
+];
+
+let running = false;
+let sessionStart = null;
+let totalElapsed = 0;
+let lastBellAt = 0;
+let rafId = null;
+let pausedAt = 0;
+let audioCtx = null;
+let currentSound = 0;
+let silentNode = null;
+let keepAliveInterval = null;
+
+// ── iOS Lock Screen Audio Keepalive ──────────────────────────────────────────
+// iOS kills Web Audio on lock unless a continuous node is running
+// AND the Media Session API tells iOS this is an active audio app
+function startKeepAlive() {
+  const ctx = getAudioCtx();
+  // Stop any previous silent node
+  if (silentNode) { try { silentNode.stop(); } catch(e) {} }
+  // Silent but non-zero oscillator — keeps the audio session open
+  silentNode = ctx.createOscillator();
+  const silentGain = ctx.createGain();
+  silentGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  silentNode.connect(silentGain);
+  silentGain.connect(ctx.destination);
+  silentNode.start();
+  // Register as active media with iOS — appears in lock screen controls
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: 'Focus Bell',
+      artist: 'Session active — return to the task',
+    });
+    navigator.mediaSession.setActionHandler('play',  () => { if (!running) toggleStart(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (running)  toggleStart(); });
+    navigator.mediaSession.playbackState = 'playing';
+  }
+  // Resume AudioContext every 25s as a safety net against iOS throttling
+  clearInterval(keepAliveInterval);
+  keepAliveInterval = setInterval(() => {
+    if (!running) return;
+    if (ctx.state === 'suspended') ctx.resume();
+  }, 25000);
+}
+
+function stopKeepAlive() {
+  if (silentNode) { try { silentNode.stop(); } catch(e) {} silentNode = null; }
+  clearInterval(keepAliveInterval);
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+}
+
+const reminders = [
+  "Return to the task. Let the distraction pass.",
+  "The Attention wanders — gently bring it back.",
+  "This moment. This task. This breath.",
+  "Notice the Vritti. Release it. Return.",
+  "You are the awareness, not the distraction.",
+  "Come back. The task awaits your depth.",
+  "Momentum builds with each return.",
+];
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function selectSound(idx) {
+  currentSound = idx;
+  document.querySelectorAll('.sound-opt').forEach((el, i) => el.classList.toggle('active', i === idx));
+}
+
+function previewBell() { playBell(); }
+
+function playBell() {
+  currentSound === 0 ? playBowl() : playTempleBell();
+  animateBell();
+}
+
+function playBowl() {
+  const ctx = getAudioCtx();
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.62, t);
+  master.connect(ctx.destination);
+
+  const convolver = ctx.createConvolver();
+  const irLen = ctx.sampleRate * 5.5;
+  const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < irLen; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/irLen, 1.8);
+  }
+  convolver.buffer = ir;
+  const revGain = ctx.createGain();
+  revGain.gain.setValueAtTime(0.38, t);
+  convolver.connect(revGain); revGain.connect(master);
+
+  const partials = [
+    { freq: 220,  amp: 0.50, decay: 11.0, detune: 0.6 },
+    { freq: 606,  amp: 0.18, decay: 7.5,  detune: 1.1 },
+    { freq: 1139, amp: 0.08, decay: 5.0,  detune: 1.4 },
+    { freq: 1758, amp: 0.035,decay: 3.2,  detune: 1.8 },
+  ];
+
+  const tO = ctx.createOscillator(), tF = ctx.createBiquadFilter(), tG = ctx.createGain();
+  tO.frequency.setValueAtTime(60, t); tO.type = 'sine';
+  tF.type = 'lowpass'; tF.frequency.setValueAtTime(120, t);
+  tG.gain.setValueAtTime(0, t);
+  tG.gain.linearRampToValueAtTime(0.18, t+0.005);
+  tG.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+  tO.connect(tF); tF.connect(tG); tG.connect(master);
+  tO.start(t); tO.stop(t+0.15);
+
+  partials.forEach(({ freq, amp, decay, detune }) => {
+    [0, detune].forEach((offset, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain(), filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.setValueAtTime(freq*3.5, t); filt.Q.setValueAtTime(0.5, t);
+      osc.frequency.setValueAtTime(freq+offset, t); osc.type = 'sine';
+      const pa = amp * (i===0 ? 0.6 : 0.4);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(pa*0.3, t+0.015);
+      gain.gain.linearRampToValueAtTime(pa, t+0.06);
+      gain.gain.setValueAtTime(pa, t+0.06);
+      gain.gain.exponentialRampToValueAtTime(pa*0.3, t+decay*0.5);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+decay);
+      osc.connect(filt); filt.connect(gain); gain.connect(master); gain.connect(convolver);
+      osc.start(t); osc.stop(t+decay+0.3);
+    });
+  });
+}
+
+function playTempleBell() {
+  const ctx = getAudioCtx();
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.55, t);
+  master.connect(ctx.destination);
+
+  const convolver = ctx.createConvolver();
+  const irLen = ctx.sampleRate * 3.2;
+  const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < irLen; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/irLen, 2.2);
+  }
+  convolver.buffer = ir;
+  const revGain = ctx.createGain();
+  revGain.gain.setValueAtTime(0.22, t);
+  convolver.connect(revGain); revGain.connect(master);
+
+  const partials = [
+    { freq: 330,  amp: 0.45, decay: 6.0, detune: 0.0 },
+    { freq: 528,  amp: 0.22, decay: 4.5, detune: 0.8 },
+    { freq: 792,  amp: 0.14, decay: 3.5, detune: 1.0 },
+    { freq: 1188, amp: 0.07, decay: 2.5, detune: 1.3 },
+    { freq: 1980, amp: 0.03, decay: 1.5, detune: 0.0 },
+  ];
+
+  const tO = ctx.createOscillator(), tG = ctx.createGain();
+  tO.frequency.setValueAtTime(400, t); tO.type = 'triangle';
+  tG.gain.setValueAtTime(0, t);
+  tG.gain.linearRampToValueAtTime(0.25, t+0.002);
+  tG.gain.exponentialRampToValueAtTime(0.0001, t+0.05);
+  tO.connect(tG); tG.connect(master);
+  tO.start(t); tO.stop(t+0.06);
+
+  partials.forEach(({ freq, amp, decay, detune }) => {
+    [0, ...(detune ? [detune] : [])].forEach((offset, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.frequency.setValueAtTime(freq+offset, t); osc.type = 'sine';
+      const pa = amp * (i===0 ? (detune ? 0.65 : 1.0) : 0.35);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(pa, t+0.008);
+      gain.gain.setValueAtTime(pa, t+0.008);
+      gain.gain.exponentialRampToValueAtTime(pa*0.4, t+decay*0.4);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+decay);
+      osc.connect(gain); gain.connect(master); gain.connect(convolver);
+      osc.start(t); osc.stop(t+decay+0.2);
+    });
+  });
+}
+
+function animateBell() {
+  const bell = document.getElementById('bell');
+  bell.classList.remove('ringing'); void bell.offsetWidth; bell.classList.add('ringing');
+  setTimeout(() => bell.classList.remove('ringing'), 700);
+  const ripple = document.getElementById('ripple');
+  ripple.classList.remove('active'); void ripple.offsetWidth; ripple.classList.add('active');
+}
+
+function showReminder() {
+  const el = document.getElementById('reminder');
+  el.textContent = reminders[Math.floor(Math.random() * reminders.length)];
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 4000);
+}
+
+function getCurrentPhase(elapsed) {
+  let cum = 0;
+  for (let i = 0; i < phases.length; i++) {
+    const dur = phases[i].duration;
+    if (dur === null) return { idx: i, phaseElapsed: elapsed - cum };
+    if (elapsed < cum + dur) return { idx: i, phaseElapsed: elapsed - cum };
+    cum += dur;
+  }
+  return { idx: phases.length - 1, phaseElapsed: elapsed - cum };
+}
+
+function formatTime(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(Math.floor(s%60)).padStart(2,'0');
+}
+
+function updateUI(elapsed) {
+  const { idx, phaseElapsed } = getCurrentPhase(elapsed);
+  const phase = phases[idx];
+  document.querySelectorAll('.phase-block').forEach((el, i) => el.classList.toggle('active', i===idx));
+  document.getElementById('timerArea').className = 'timer-area phase-' + idx;
+  document.getElementById('phaseName').textContent = phase.name;
+  document.getElementById('timeDisplay').textContent = formatTime(elapsed);
+  const tillBell = Math.max(0, phase.interval - (elapsed - lastBellAt));
+  document.getElementById('nextBell').textContent = 'Bell in ' + formatTime(tillBell);
+  if (phase.duration) {
+    document.getElementById('progressFill').style.width = Math.min((phaseElapsed/phase.duration)*100, 100) + '%';
+  } else {
+    document.getElementById('progressFill').style.width = '0%';
+  }
+}
+
+function tick() {
+  if (!running) return;
+  totalElapsed = pausedAt + (Date.now() - sessionStart) / 1000;
+  const { idx } = getCurrentPhase(totalElapsed);
+  const sinceLastBell = totalElapsed - lastBellAt;
+  if (sinceLastBell >= phases[idx].interval) {
+    playBell(); showReminder();
+    lastBellAt = totalElapsed;
+  }
+  updateUI(totalElapsed);
+  rafId = requestAnimationFrame(tick);
+}
+
+function toggleStart() {
+  if (running) {
+    running = false; pausedAt = totalElapsed;
+    cancelAnimationFrame(rafId);
+    stopKeepAlive();
+    document.getElementById('startBtn').textContent = 'Resume';
+  } else {
+    running = true; sessionStart = Date.now();
+    document.getElementById('startBtn').textContent = 'Pause';
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    startKeepAlive();
+    tick();
+    setTimeout(() => { playBell(); showReminder(); }, 100);
+  }
+}
+
+function resetSession() {
+  running = false; cancelAnimationFrame(rafId);
+  stopKeepAlive();
+  totalElapsed = 0; pausedAt = 0; lastBellAt = 0; sessionStart = null;
+  document.getElementById('startBtn').textContent = 'Begin Session';
+  updateUI(0);
+}
+
+const intervalMins = [{ min:5, max:300 }, { min:10, max:600 }, { min:60, max:3600 }];
+function changeInterval(idx, delta) {
+  phases[idx].interval = Math.max(intervalMins[idx].min, Math.min(intervalMins[idx].max, phases[idx].interval + delta));
+  const s = phases[idx].interval;
+  const el = document.getElementById('iv' + idx);
+  el.textContent = s < 60 ? s+'s' : (s%60===0 ? (s/60)+'m' : Math.floor(s/60)+'m'+(s%60)+'s');
+}
+
+function changeDur(idx, delta) {
+  if (phases[idx].duration === null && delta < 0) return;
+  const nv = (phases[idx].duration || 0) + delta;
+  phases[idx].duration = (nv <= 0 && idx === 2) ? null : Math.max(60, nv);
+  const el = document.getElementById('dv' + idx);
+  const d = phases[idx].duration;
+  el.textContent = d === null ? '∞' : (d%60===0 ? (d/60)+'m' : Math.floor(d/60)+'m'+(d%60)+'s');
+}
+
+updateUI(0);
+</script>
+</body>
+</html>
