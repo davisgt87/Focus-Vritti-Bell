@@ -655,8 +655,24 @@ function tick() {
     playBell(); showReminder();
     lastBellAt = totalElapsed;
   }
-  updateUI(totalElapsed);
+  // UI update only when visible (rAF stops in background, that's fine for display)
+  if (!document.hidden) updateUI(totalElapsed);
   rafId = requestAnimationFrame(tick);
+}
+
+// Background bell scheduler — uses setTimeout which iOS fires even when locked
+// as long as there is an active audio session (our keepalive ensures this)
+function scheduleBells() {
+  if (!running) return;
+  totalElapsed = pausedAt + (Date.now() - sessionStart) / 1000;
+  const { idx } = getCurrentPhase(totalElapsed);
+  const sinceLastBell = totalElapsed - lastBellAt;
+  if (sinceLastBell >= phases[idx].interval) {
+    playBell(); showReminder();
+    lastBellAt = totalElapsed;
+  }
+  // Schedule next check in 1 second — tight enough to never miss a bell
+  setTimeout(scheduleBells, 1000);
 }
 
 function toggleStart() {
@@ -669,7 +685,10 @@ function toggleStart() {
     running = true; sessionStart = Date.now();
     document.getElementById('startBtn').textContent = 'Pause';
     startKeepAlive();
+    // rAF loop for smooth UI when screen is on
     tick();
+    // setTimeout loop for bells when screen is locked
+    scheduleBells();
     setTimeout(() => { playBell(); showReminder(); }, 100);
   }
 }
